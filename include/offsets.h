@@ -3,12 +3,12 @@
 #pragma once
 
 // order: (to avoid kernel panic by reading not allocated memory)
-#define KERN_315_XFAST_SYSCALL      0x469C40    // #7
-#define KERN_355_XFAST_SYSCALL      0x3A1F10    // #6
-#define KERN_350_XFAST_SYSCALL      0x3A1AD0    // #5
-#define KERN_405_XFAST_SYSCALL      0x30EB30    // #4
-#define KERN_455_XFAST_SYSCALL      0x3095D0    // #2
-#define KERN_474_XFAST_SYSCALL      0x30B7D0    // #3
+#define KERN_315_XFAST_SYSCALL      0x469C40     // #7
+#define KERN_355_XFAST_SYSCALL      0x3A1F10     // #6
+#define KERN_350_XFAST_SYSCALL      0x3A1AD0     // #5
+#define KERN_405_XFAST_SYSCALL      0x30EB30     // #4
+#define KERN_455_XFAST_SYSCALL      0x3095D0     // #2
+#define KERN_474_XFAST_SYSCALL      0x30B7D0     // #3
 #define KERN_500_XFAST_SYSCALL      0x1C0        // #1
 #define KERN_501_XFAST_SYSCALL      0x1C0        // #1
 #define KERN_505_XFAST_SYSCALL      0x1C0        // #1
