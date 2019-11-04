@@ -199,10 +199,13 @@ int traverse_dir(char *base, char *usb, void(*handler)(char *, char *))
                 //printfsocket("Directory: %s\n", dname);
                 if (!strcmp(dname, ".") ||
                     !strcmp(dname, "..") ||
+                    !strcmp(dname, "cache0002") ||
                     !strcmp(dname, "dev") ||
                     !strcmp(dname, "mnt") ||
                     !strcmp(dname, "preinst") ||
                     !strcmp(dname, "preinst2") ||
+                    !strcmp(dname, "$RECYCLE.BIN") ||
+                    !strcmp(dname, "sandbox") ||
                     !strcmp(dname, "system_data") ||
                     !strcmp(dname, "system_tmp") ||
                     !strcmp(dname, "user")) {
