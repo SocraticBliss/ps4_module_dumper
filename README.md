@@ -12,7 +12,7 @@ Still need to...
 [PS4 Payload SDK](https://github.com/SocraticBliss/ps4-payload-sdk)
 
 # Instructions
-0) Compile the payload
+0) Compile the payload (make)
 1) Plug in a USB flash drive to your PS4
 2) Send the payload
 3) After sending the payload, wait a minute or so and unplug the USB drive
