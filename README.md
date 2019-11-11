@@ -9,12 +9,10 @@ Still need to...
 * Fix the files that are flagged as OS critical files
 
 # Building
-[IDC's PS4 Payload SDK](https://github.com/idc/ps4-payload-sdk) for 1.01-1.76
-
-[VTX's PS4 Payload SDK](https://github.com/xvortex/ps4-payload-sdk) for anything above 1.76
+[PS4 Payload SDK](https://github.com/SocraticBliss/ps4-payload-sdk)
 
 # Instructions
-0) Compile the payload
+0) Compile the payload (make)
 1) Plug in a USB flash drive to your PS4
 2) Send the payload
 3) After sending the payload, wait a minute or so and unplug the USB drive
