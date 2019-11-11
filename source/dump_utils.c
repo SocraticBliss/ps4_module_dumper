@@ -25,6 +25,7 @@ int read_decrypt_segment(int fd, uint64_t index, uint64_t offset, size_t size, u
         outSize -= bytes;
         realOffset += bytes;
     }
+    
     return 1;
 }
 
@@ -32,20 +33,20 @@ int is_segment_in_other_segment(Elf64_Phdr *phdr, int index, Elf64_Phdr *phdrs, 
 {
     for (int i = 0; i < num; i += 1) {
         Elf64_Phdr *p = &phdrs[i];
-        if (i != index) {
-            if (p->p_filesz > 0) {
-                if ((phdr->p_offset >= p->p_offset) && ((phdr->p_offset + phdr->p_filesz) <= (p->p_offset + p->p_filesz))) {
+        if (i != index)
+            if (p->p_filesz > 0)
+                if ((phdr->p_offset >= p->p_offset) && ((phdr->p_offset + phdr->p_filesz) <= (p->p_offset + p->p_filesz)))
                     return 1;
-                }
-            }
-        }
     }
+    
     return 0;
 }
 
 SegmentBufInfo *parse_phdr(Elf64_Phdr *phdrs, int num, int *segBufNum)
 {
+    #ifdef DEBUG_SOCKET
     //printfsocket("segment num : %d\n", num);
+    #endif
     SegmentBufInfo *infos = (SegmentBufInfo *)malloc(sizeof(SegmentBufInfo) * num);
     int segindex = 0;
     for (int i = 0; i < num; i += 1) {
@@ -64,6 +65,7 @@ SegmentBufInfo *parse_phdr(Elf64_Phdr *phdrs, int num, int *segBufNum)
         }
     }
     *segBufNum = segindex;
+    
     return infos;
 }
 
@@ -99,7 +101,7 @@ void do_dump(char *saveFile, int fd, SegmentBufInfo *segBufs, int segBufNum, Elf
     else
     {
         #ifdef DEBUG_SOCKET
-        printfsocket("[-] can't dump: %s\n", saveFile);
+        printfsocket("[-] Error: Can't dump: %s\n", saveFile);
         #endif
     }
 }
@@ -130,7 +132,7 @@ void decrypt_and_dump_self(char *selfFile, char *saveFile)
         else 
         {
             #ifdef DEBUG_SOCKET
-            printfsocket("[-] can't mmap: %s\n", selfFile);
+            printfsocket("[-] Error: Can't mmap: %s\n", selfFile);
             #endif
         }
         close(fd);
@@ -138,7 +140,7 @@ void decrypt_and_dump_self(char *selfFile, char *saveFile)
     else 
     {
         #ifdef DEBUG_SOCKET
-        printfsocket("[-] can't open: %s\n", selfFile);
+        printfsocket("[-] Error: Can't open: %s\n", selfFile);
         #endif
     }
 }
@@ -196,7 +198,7 @@ int traverse_dir(char *base, char *usb, void(*handler)(char *, char *))
         switch(entry->d_type)
         {
             case DT_DIR:
-                //printfsocket("Directory: %s\n", dname);
+                printfsocket("Directory: %s\n", dname);
                 if (!strcmp(dname, ".") ||
                     !strcmp(dname, "..") ||
                     !strcmp(dname, "cache0002") ||

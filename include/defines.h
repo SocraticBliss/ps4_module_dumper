@@ -32,6 +32,8 @@ struct {                          \
     TRACEBUF                      \
 }
 
+extern int sock;
+
 typedef struct {
     uint32_t props;
     uint32_t reserved;

