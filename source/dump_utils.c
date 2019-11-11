@@ -198,7 +198,9 @@ int traverse_dir(char *base, char *usb, void(*handler)(char *, char *))
         switch(entry->d_type)
         {
             case DT_DIR:
-                printfsocket("Directory: %s\n", dname);
+                #ifdef DEBUG_SOCKET
+                //printfsocket("Directory: %s\n", dname);
+                #endif
                 if (!strcmp(dname, ".") ||
                     !strcmp(dname, "..") ||
                     !strcmp(dname, "cache0002") ||
